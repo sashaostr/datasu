@@ -37,6 +37,7 @@ def load_variables(path='persisted_vars', variables=[]):
         if len(variables) == 0 or vn in variables:
             vv = jb.load(path+'/'+vn)
             # exec("global {0}; {0}={1}".format(vn, vv))
-            exec("mod.{0}={1}".format(vn, vv))
+            setattr(mod, vn, vv)
+            # exec("mod.{0}={1}".format(vn, vv))
             print 'loaded %s' % vn
 
