@@ -25,6 +25,7 @@ setup(name='datasu',
           'sklearn',
           'scipy',
           'gzip',
+          'joblib'
 
 
 
