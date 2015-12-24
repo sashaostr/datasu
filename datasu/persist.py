@@ -30,9 +30,9 @@ def load_variables(path='persisted_vars', variables=[], load_to_context=True):
 
     frm = inspect.stack()[1]
     # mod = inspect.getmodule(frm[0])
-    vars_dict = frm[0].f_globals
+    context = frm[0].f_globals
 
-    files = [f for f in listdir(path) if isfile(join(path, f))]
+    files = [f for f in listdir(path) if isfile(join(path, f)) and os.path.splitext(f)[1] == '']
     print files
     loaded = {}
     for vn in files:
@@ -40,7 +40,7 @@ def load_variables(path='persisted_vars', variables=[], load_to_context=True):
             vv = jb.load(path+'/'+vn)
             loaded[vn] = vv
             if load_to_context:
-                vars_dict[vn] = vv
+                context[vn] = vv
             # exec("global {0}; {0}={1}".format(vn, vv))
             # setattr(mod, vn, vv)
             # exec("mod.{0}={1}".format(vn, vv))
