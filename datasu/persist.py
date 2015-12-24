@@ -26,7 +26,7 @@ def persist_variables(variables, path='persisted_vars'):
         jb.dump(vars_dict[v], filename=var_path, compress=True)
 
 
-def load_variables(path='persisted_vars', variables=[]):
+def load_variables(path='persisted_vars', variables=[], load_to_context=True):
 
     frm = inspect.stack()[1]
     # mod = inspect.getmodule(frm[0])
@@ -34,12 +34,16 @@ def load_variables(path='persisted_vars', variables=[]):
 
     files = [f for f in listdir(path) if isfile(join(path, f))]
     print files
+    loaded = {}
     for vn in files:
         if len(variables) == 0 or vn in variables:
             vv = jb.load(path+'/'+vn)
-            vars_dict[vn] = vv
+            loaded[vn] = vv
+            if load_to_context:
+                vars_dict[vn] = vv
             # exec("global {0}; {0}={1}".format(vn, vv))
             # setattr(mod, vn, vv)
             # exec("mod.{0}={1}".format(vn, vv))
             print 'loaded %s' % vn
+    return loaded
 
