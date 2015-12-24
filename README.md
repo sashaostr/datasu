@@ -1,2 +1,2 @@
 # datasu
-my utils for data science
+utils for data science
