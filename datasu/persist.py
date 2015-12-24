@@ -5,7 +5,7 @@ import joblib as jb
 import inspect
 import os
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, splitext
 
 
 def persist_variables(variables, path='persisted_vars'):
@@ -21,7 +21,7 @@ def persist_variables(variables, path='persisted_vars'):
         os.makedirs(path)
 
     for v in variables:
-        var_path = '%s/%s' % (path, v)
+        var_path = '%s/%s.var' % (path, v)
         print 'dumping %s to %s' % (v,var_path)
         jb.dump(vars_dict[v], filename=var_path, compress=True)
 
@@ -32,12 +32,13 @@ def load_variables(path='persisted_vars', variables=[], load_to_context=True):
     # mod = inspect.getmodule(frm[0])
     context = frm[0].f_globals
 
-    files = [f for f in listdir(path) if isfile(join(path, f)) and os.path.splitext(f)[1] == '']
+    files = [f for f in listdir(path) if isfile(join(path, f)) and os.path.splitext(f)[1] == '.var']
     print files
     loaded = {}
-    for vn in files:
+    for fn in files:
+        vn = splitext(fn)[0]
         if len(variables) == 0 or vn in variables:
-            vv = jb.load(path+'/'+vn)
+            vv = jb.load(path+'/'+fn)
             loaded[vn] = vv
             if load_to_context:
                 context[vn] = vv
