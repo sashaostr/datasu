@@ -11,8 +11,8 @@ from os.path import isfile, join
 def persist_variables(variables, path='persisted_vars'):
 
     frm = inspect.stack()[1]
-    mod = inspect.getmodule(frm[0])
-    vars_dict = mod.globals()
+    # mod = inspect.getmodule(frm[0])
+    vars_dict = frm[0].f_globals
 
     if not isinstance(variables, list):
         variables = [variables]
