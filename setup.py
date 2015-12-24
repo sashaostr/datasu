@@ -24,7 +24,6 @@ setup(name='datasu',
           'matplotlib',
           'sklearn',
           'scipy',
-          'gzip',
           'joblib'
 
 
