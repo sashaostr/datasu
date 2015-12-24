@@ -7,7 +7,7 @@ from os import listdir
 from os.path import isfile, join
 
 
-def persist_variables(variables, vars_dict=globals() ,path='persisted_vars'):
+def persist_variables(variables, vars_dict=globals(), path='persisted_vars'):
     if not isinstance(variables, list):
         variables = [variables]
 
@@ -20,11 +20,12 @@ def persist_variables(variables, vars_dict=globals() ,path='persisted_vars'):
         jb.dump(vars_dict[v], filename=var_path, compress=True)
 
 
-def load_variables(vars_dict=globals(), path='persisted_vars',variables=[]):
+def load_variables(path='persisted_vars', variables=[]):
     files = [f for f in listdir(path) if isfile(join(path, f))]
     print files
-    for v in files:
-        if len(variables) == 0 or v in variables:
-            vars_dict[v] = jb.load(path+'/'+v)
-            print 'loaded %s' % v
+    for vn in files:
+        if len(variables) == 0 or vn in variables:
+            vv = jb.load(path+'/'+vn)
+            exec("global {0}; {0}={1}".format(vn, vv))
+            print 'loaded %s' % vn
 
