@@ -32,7 +32,7 @@ def substitute_props(props_dict, *format_props):
     '''
     tenants_template_merged_propag_subst = [substitute_props(tenant_template_merged_propag, system_props) for tenant_template_merged_propag in tenants_template_merged_propag]
     '''
-    from dict import merge_dicts
+    from dicts import merge_dicts
 
     all_props = merge_dicts(*format_props)
     fmt = PartialFormatter()
