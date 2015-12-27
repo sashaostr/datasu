@@ -1,4 +1,4 @@
-__author__ = 'sasha'
+__author__ = 'sashaostr'
 
 
 import joblib as jb

@@ -1,4 +1,4 @@
-__author__ = 'sasha'
+__author__ = 'sashaostr'
 
 import matplotlib.pyplot as plt
 import sklearn.cross_validation as cv
