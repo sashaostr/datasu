@@ -1,2 +1,2 @@
 # datasu
-utils for data science
+Utils for data analysis and data science
