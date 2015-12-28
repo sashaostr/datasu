@@ -7,13 +7,14 @@ col_name_pattern = lambda prefix, infix: "%s.*%s.*" % (prefix, infix)
 filter_array = lambda pattern, array: filter(lambda c: re.match(pattern, c), array)
 
 
-def get_expr(members, operator):
+def get_expr(members, operator, expr='%s',pref='', suf=''):
     if not isinstance(members,list):
         members = [members]
-    return ''.join(['(', operator.join(members), ')']) if len(members) > 0 else ''
+    members = map(lambda m:expr % m ,members)
+    return ''.join([pref, operator.join(members), suf]) if len(members) > 0 else ''
 
 plus_expr = partial(get_expr, operator='+')
-
+plus_categorical_expr = partial(plus_expr, expr='C(%s)')
 
 plus_agg_columns_by_infix = lambda infix, columns: get_expr(filter_array(col_name_pattern('agg', infix), columns), '+')
 
