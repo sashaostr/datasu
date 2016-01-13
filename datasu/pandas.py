@@ -17,20 +17,23 @@ def flatten_columns(df, prefix=''):
     return [prefix + '_'.join(t) for t in df.columns]
 
 
-def get_agg(grpby_columns, grp_columns, aggs):
+def build_df_agg(grpby_columns, agg_columns, agg_funcs):
     """
     generates aggregations
     :param grpby_columns: columns to groupby with
-    :param grp_columns: columns to aggregate
-    :param aggs: aggregations dict to enable on grp_columns: {'total':np.sum, 'average':np.average }
-    :return:
+    :param agg_columns: columns to aggregate
+    :param agg_funcs: aggregations dict to enable on agg_columns: {'total':np.sum, 'average':np.average }
+    :return {'productsize': {'id_brand_average': <function pyspark.sql.functions.avg>,
+             'id_brand_total': <function pyspark.sql.functions.sum>},
+             'purchasequantity': {'id_brand_average': <function pyspark.sql.functions.avg>,
+             'id_brand_total': <function pyspark.sql.functions.sum>}}:
 
     Example:
 
-    count_agg = partial(get_agg, grp_columns=['customer_id'],
-                                 grouping={'count':np.count_nonzero })
-    total_avg_agg = partial(get_agg, grp_columns=['productsize','purchasequantity',],
-                                     grouping={'total':np.sum, 'average':np.average })
+    count_agg = partial(build_df_agg, agg_columns=['customer_id'],
+                                 agg_funcs={'count':np.count_nonzero })
+    total_avg_agg = partial(build_df_agg, agg_columns=['productsize','purchasequantity',],
+                                     agg_funcs={'total':np.sum, 'average':np.average })
 
     grpby_columns = ['customer_id','brand']
 
@@ -40,7 +43,7 @@ def get_agg(grpby_columns, grp_columns, aggs):
     """
     col_prefix = '_'.join(grpby_columns)
     gr_aggs = lambda pref,grps:  {'_'.join((pref ,gr[0])):gr[1] for gr in grps.iteritems()}
-    agg = {gc:gr_aggs(col_prefix, aggs) for gc in grp_columns}
+    agg = {gc:gr_aggs(col_prefix, agg_funcs) for gc in agg_columns}
     return agg
 
 
