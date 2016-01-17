@@ -35,3 +35,5 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs):
     return aggs
 
 
+def write_to_csv(df, path):
+    df.write.format("com.databricks.spark.csv").save(path=path, mode='overwrite', header='true')
