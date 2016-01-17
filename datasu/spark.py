@@ -35,5 +35,10 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs):
     return aggs
 
 
-def write_to_csv(df, path):
+def write_ddf_to_csv(df, path):
     df.write.format("com.databricks.spark.csv").save(path=path, mode='overwrite', header='true')
+
+
+def read_ddf_from_csv(context, path):
+    csv_reader = context.read.format('com.databricks.spark.csv').options(header='true', inferschema='true')
+    return csv_reader.load(path, samplingRatio=None)
