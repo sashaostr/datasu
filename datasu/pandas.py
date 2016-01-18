@@ -17,7 +17,7 @@ def flatten_columns(df, prefix=''):
     return [prefix + '_'.join(t) for t in df.columns]
 
 
-def build_df_agg(grpby_columns, agg_columns, agg_funcs):
+def build_df_agg(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
     """
     generates aggregations
     :param grpby_columns: columns to groupby with
@@ -41,7 +41,7 @@ def build_df_agg(grpby_columns, agg_columns, agg_funcs):
                                           .agg(merge_dicts(count_agg(grpby_columns),
                                                            total_avg_agg(grpby_columns)))
     """
-    col_prefix = '_'.join(grpby_columns)
+    col_prefix = prefix + '_'.join(grpby_columns) + suffix
     gr_aggs = lambda pref,grps:  {'_'.join((pref ,gr[0])):gr[1] for gr in grps.iteritems()}
     agg = {gc:gr_aggs(col_prefix, agg_funcs) for gc in agg_columns}
     return agg

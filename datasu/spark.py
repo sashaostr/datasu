@@ -5,7 +5,7 @@ import doctest
 from pyspark.sql import functions as F
 
 
-def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs):
+def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
     """
     generates aggregations for spark dataframe
     :param grpby_columns: columns to groupby with: ['id','brand']
@@ -27,7 +27,7 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs):
                                           .agg(**total_avg_agg)
     """
     aggs = []
-    col_prefix = '_'.join(grpby_columns)
+    col_prefix = prefix + '_'.join(grpby_columns) + suffix
     for col in agg_columns:
         for agg_name, agg_func in agg_funcs.iteritems():
             agg = agg_func(col).alias("_".join([col_prefix, col, agg_name]))
