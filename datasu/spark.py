@@ -27,10 +27,10 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
                                           .agg(**total_avg_agg)
     """
     aggs = []
-    col_prefix = prefix + '_'.join(grpby_columns) + suffix
+    col_prefix = prefix + '_'.join(grpby_columns)
     for col in agg_columns:
         for agg_name, agg_func in agg_funcs.iteritems():
-            agg = agg_func(col).alias("_".join([col_prefix, col, agg_name]))
+            agg = agg_func(col).alias("_".join([col_prefix, col, agg_name, suffix]))
             aggs.append(agg)
     return aggs
 
@@ -42,3 +42,19 @@ def write_ddf_to_csv(df, path):
 def read_ddf_from_csv(context, path):
     csv_reader = context.read.format('com.databricks.spark.csv').options(header='true', inferschema='true')
     return csv_reader.load(path, samplingRatio=None)
+
+
+def convert_columns_to_type(df, columns, target_type):
+
+    from pyspark.sql.functions import UserDefinedFunction
+
+    asType = UserDefinedFunction(lambda x: x, target_type)
+
+    new_df = df.select(*[asType(column).alias(column) if column in columns else column for column in df.columns])
+    return new_df
+
+
+def drop_columns(df, columns):
+    for c in columns:
+        df = df.drop(c)
+    return df
