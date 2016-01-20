@@ -3,7 +3,8 @@ __author__ = 'sashaostr'
 import numpy as np
 import doctest
 from pyspark.sql import functions as F
-
+from pyspark.sql.functions import udf
+from pyspark.sql.types import *
 
 def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
     """
@@ -45,16 +46,27 @@ def read_ddf_from_csv(context, path):
 
 
 def convert_columns_to_type(df, columns, target_type):
-
-    from pyspark.sql.functions import UserDefinedFunction
-
-    asType = UserDefinedFunction(lambda x: x, target_type)
-
+    asType = udf(lambda x: x, target_type)
     new_df = df.select(*[asType(column).alias(column) if column in columns else column for column in df.columns])
     return new_df
 
 
-def drop_columns(df, columns):
+def drop_columns(df, columns=[], prefix=None):
     for c in columns:
         df = df.drop(c)
+
+    if prefix is not None:
+        df_columns = df.columns
+        for c in df_columns:
+            if c.startswith(prefix):
+                df = df.drop(c)
+
     return df
+
+
+
+vector_to_array = udf(lambda x: x.values.tolist(), ArrayType(DoubleType()), 'vector_to_array')
+get_index_from_vector = udf(lambda x,i: x.values.tolist()[i], DoubleType(), 'get_index_from_vector')
+
+# def rename_columns(df, fromcolumns=[], prefix=None):
+
