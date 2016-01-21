@@ -3,7 +3,7 @@ __author__ = 'sashaostr'
 import numpy as np
 import doctest
 from pyspark.sql import functions as F
-from pyspark.sql.functions import udf
+from pyspark.sql.functions import udf, UserDefinedFunction
 from pyspark.sql.types import *
 
 def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
