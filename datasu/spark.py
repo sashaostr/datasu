@@ -65,8 +65,8 @@ def drop_columns(df, columns=[], prefix=None):
 
 
 
-vector_to_array = udf(lambda x: x.values.tolist(), ArrayType(DoubleType()))
-get_index_from_vector = udf(lambda x,i: x.values.tolist()[i], DoubleType())
+# vector_to_array = udf(lambda x: x.values.tolist(), ArrayType(DoubleType()))
+# get_index_from_vector = udf(lambda x,i: x.values.tolist()[i], DoubleType())
 
 # def rename_columns(df, fromcolumns=[], prefix=None):
 
