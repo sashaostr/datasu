@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import udf, UserDefinedFunction
 from pyspark.sql.types import *
 
-def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
+def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None):
     """
     generates aggregations for spark dataframe
     :param grpby_columns: columns to groupby with: ['id','brand']
@@ -31,7 +31,7 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix='', suffix=''):
     col_prefix = prefix + '_'.join(grpby_columns)
     for col in agg_columns:
         for agg_name, agg_func in agg_funcs.iteritems():
-            agg = agg_func(col).alias("_".join([col_prefix, col, agg_name, suffix]))
+            agg = agg_func(col).alias("_".join([s for s in [col_prefix, col, agg_name, suffix] if s is not None]))
             aggs.append(agg)
     return aggs
 
