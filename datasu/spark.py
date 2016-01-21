@@ -46,7 +46,7 @@ def read_ddf_from_csv(context, path):
 
 
 def convert_columns_to_type(df, columns, target_type):
-    asType = udf(lambda x: x, target_type)
+    asType = udf(lambda x: x, target_type())
     new_df = df.select(*[asType(column).alias(column) if column in columns else column for column in df.columns])
     return new_df
 
@@ -65,8 +65,12 @@ def drop_columns(df, columns=[], prefix=None):
 
 
 
-# vector_to_array = udf(lambda x: x.values.tolist(), ArrayType(DoubleType()))
-# get_index_from_vector = udf(lambda x,i: x.values.tolist()[i], DoubleType())
+def vector_to_array(elements_type=DoubleType):
+    return UserDefinedFunction(lambda x: x.values.tolist(), ArrayType(elements_type()), 'vector_to_array')
+
+
+def get_index_from_vector(element_type=DoubleType):
+    return UserDefinedFunction(lambda x, index: x.values.tolist()[index], element_type(), 'get_index_from_vector')
 
 # def rename_columns(df, fromcolumns=[], prefix=None):
 
