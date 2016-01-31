@@ -31,7 +31,7 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None
     col_prefix = prefix + '_'.join(grpby_columns)
     for col in agg_columns:
         for agg_name, agg_func in agg_funcs.iteritems():
-            agg = agg_func(col).alias("_".join([s for s in [col_prefix, col, agg_name, suffix] if s is not None]))
+            agg = agg_func(col).alias("_".join([s for s in [col_prefix, col, agg_name, suffix] if s]))
             aggs.append(agg)
     return aggs
 
@@ -72,5 +72,18 @@ def vector_to_array(elements_type=DoubleType):
 def get_index_from_vector(element_type=DoubleType):
     return UserDefinedFunction(lambda x, index: x.values.tolist()[index], element_type(), 'get_index_from_vector')
 
-# def rename_columns(df, fromcolumns=[], prefix=None):
+
+def rename_columns(df, prefix='', suffix='', separator='_', columns=None):
+    prefix = prefix + separator if prefix else prefix
+    suffix = separator + suffix if suffix else suffix
+    columns = df.columns if columns is None else columns
+    df1 = df.select('*')
+    for c in columns:
+        df1 = df1.withColumnRenamed(c, prefix + c + suffix)
+    return df1
+
+
+def filter_columns(expr, df):
+    import re
+    return filter(lambda c: re.match(expr,c), df.columns)
 
