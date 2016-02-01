@@ -17,7 +17,6 @@ plus_expr = partial(get_expr, operator='+')
 plus_categorical_expr = partial(plus_expr, expr='C(%s)')
 
 plus_agg_columns_by_infix = lambda infix, columns: get_expr(filter_array(col_name_pattern('agg', infix), columns), '+')
-u
 
 # agg_col_name_pattern = partial(col_name_pattern, 'agg')
 # plus_agg_columns_by_infix1 = lambda infix: plus_expr(filter_columns(agg_col_name_pattern(infix)))
