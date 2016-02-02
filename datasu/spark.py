@@ -87,3 +87,13 @@ def filter_columns(expr, df):
     import re
     return filter(lambda c: re.match(expr,c), df.columns)
 
+
+def pivot_aggregate(ddf, grpby_columns, pivot_column, aggs, pivot_filter_values=None, pivot_filter_support=None):
+    if pivot_filter_support and not pivot_filter_values:
+        frequent = ddf.freqItems([pivot_column], support=pivot_filter_support).first().asDict()[pivot_column+'_freqItems']
+        pivot_filter_values = map(str,frequent)
+
+    ddf_gr = ddf.groupBy(*grpby_columns)
+    ddf_pivot = ddf_gr.pivot(pivot_column, pivot_filter_values)
+    ddf_agg = ddf_pivot.agg(*aggs)
+    return ddf_agg
