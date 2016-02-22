@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import udf, UserDefinedFunction
 from pyspark.sql.types import *
 
-def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None, cast_to=None):
+def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None, cast_to=None, return_columns_names=False):
     """
     generates aggregations for spark dataframe
     :param grpby_columns: columns to groupby with: ['id','brand']
@@ -29,15 +29,22 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None
                                           .agg(**total_avg_agg)
     """
     aggs = []
+    col_names = []
     col_prefix = prefix + '_'.join(grpby_columns)
     for col in agg_columns:
         for agg_name, agg_func in agg_funcs.iteritems():
             agg_f = agg_func(col)
             if cast_to:
                 agg_f = agg_f.cast(cast_to)
-            agg = agg_f.alias("_".join([s for s in [col_prefix, col, agg_name, suffix] if s]))
+            alias = "_".join([s for s in [col_prefix, col, agg_name, suffix] if s])
+            agg = agg_f.alias(alias)
             aggs.append(agg)
-    return aggs
+            col_names.append(alias)
+
+    if return_columns_names:
+        return aggs, col_names
+    else:
+        return aggs
 
 
 def write_ddf_to_csv(df, path):
@@ -106,3 +113,42 @@ def pivot_aggregate(ddf, grpby_columns, pivot_column, aggs, pivot_filter_values=
     ddf_pivot = ddf_gr.pivot(pivot_column, pivot_filter_values)
     ddf_agg = ddf_pivot.agg(*aggs)
     return ddf_agg
+
+
+def aggregate(ddf, grpby_columns, aggs):
+    aggregated = ddf.groupBy(*map(lambda c: F.col(c),grpby_columns)).agg(*aggs)
+    return aggregated
+
+
+def index_columns(ddf, index_columns, index_col_suffix='_idx'):
+    from pyspark.ml.feature import StringIndexer
+    indexers = map(lambda c: StringIndexer(inputCol=c, outputCol='%s%s' % (c,index_col_suffix)).fit(ddf), index_columns)
+    indexed = reduce(lambda ddf,t: t.transform(ddf), indexers, ddf)
+    return indexed
+
+
+def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, agg):
+    from pyspark.mllib.linalg.distributed import CoordinateMatrix, IndexedRowMatrix
+
+    index_col_suffix = '_idx'
+    grpby_columns = [id_column, pivot_column]
+
+    aggregated = aggregate(ddf, grpby_columns, [agg])
+
+    pivot_indexed_column = pivot_column+index_col_suffix
+    agg_column_name = list(set(aggregated.columns)-set([id_column, pivot_column, pivot_indexed_column]))[0]
+
+    indexed = index_columns(ddf=aggregated, index_columns=[pivot_column])
+
+
+    cm = CoordinateMatrix(
+        indexed.map(lambda r: (long(r[id_column]), long(r[pivot_indexed_column]), r[agg_column_name]))
+    )
+
+    irm = cm.toIndexedRowMatrix()
+
+    ddf_irm = irm.rows.toDF()
+    ddf_irm = ddf_irm.withColumnRenamed('index', id_column).withColumnRenamed('vector', agg_column_name+'_vector')
+
+    return ddf_irm
+
