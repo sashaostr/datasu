@@ -6,12 +6,13 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import udf, UserDefinedFunction
 from pyspark.sql.types import *
 
-def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None):
+def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None, cast_to=None):
     """
     generates aggregations for spark dataframe
     :param grpby_columns: columns to groupby with: ['id','brand']
     :param agg_columns: columns to aggregate: ['productsize','purchasequantity']
     :param agg_funcs: aggregations dict to enable on agg_columns: { 'total':F.sum, 'average':F.avg }
+    :param cast_to: cast aggregation result column to type (e.g. cast_to='double')
     :return [Column<avg(productsize) AS id_brand_productsize_average#59>,
              Column<sum(productsize) AS id_brand_productsize_total#60>,
              Column<avg(purchasequantity) AS id_brand_purchasequantity_average#61>,
@@ -31,7 +32,10 @@ def get_ddf_aggs(grpby_columns, agg_columns, agg_funcs, prefix=None, suffix=None
     col_prefix = prefix + '_'.join(grpby_columns)
     for col in agg_columns:
         for agg_name, agg_func in agg_funcs.iteritems():
-            agg = agg_func(col).alias("_".join([s for s in [col_prefix, col, agg_name, suffix] if s]))
+            agg_f = agg_func(col)
+            if cast_to:
+                agg_f = agg_f.cast(cast_to)
+            agg = agg_f.alias("_".join([s for s in [col_prefix, col, agg_name, suffix] if s]))
             aggs.append(agg)
     return aggs
 
@@ -70,6 +74,11 @@ def vector_to_array(elements_type=DoubleType):
 
 
 def get_index_from_vector(element_type=DoubleType):
+    """
+    returns element from array by index
+    :param element_type: vector
+    :return: element at index
+    """
     return UserDefinedFunction(lambda x, index: x.values.tolist()[index], element_type(), 'get_index_from_vector')
 
 
