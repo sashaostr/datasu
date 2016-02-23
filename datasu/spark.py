@@ -127,7 +127,7 @@ def index_columns(ddf, index_columns, index_col_suffix='_idx'):
     return indexed
 
 
-def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs):
+def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs, vector_column_name='features'):
     from pyspark.mllib.linalg.distributed import CoordinateMatrix, IndexedRowMatrix
 
     index_col_suffix = '_idx'
@@ -159,11 +159,32 @@ def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs):
 
 
     if len(agg_columns_vectors)>1:
-        assembler = VectorAssembler(inputCols=agg_columns_vectors, outputCol="features")
+        assembler = VectorAssembler(inputCols=agg_columns_vectors, outputCol=vector_column_name)
         res = assembler.transform(res)
     else:
-        res = res.withColumnRenamed(agg_columns_vectors[0],'features')
+        res = res.withColumnRenamed(agg_columns_vectors[0], vector_column_name)
 
     res = drop_columns(res, columns=agg_columns_vectors)
+    return res
+
+
+def merge_features(ddfs, join_column, merge_column, output_column='features', drop_merged_columns=True):
+    ddf_res = ddfs.pop(0)
+    merge_column_renamed = merge_column + str(0)
+    merge_columns = [merge_column_renamed]
+    ddf_res = ddf_res.withColumnRenamed(merge_column, merge_column_renamed)
+
+    for i,ddf in enumerate(ddfs):
+        merge_column_renamed = merge_column + str(i+1)
+        merge_columns.append(merge_column_renamed)
+        ddf_r = ddf.withColumnRenamed(merge_column, merge_column_renamed)
+        ddf_res = ddf_res.join(ddf_r, on=join_column, how='inner')
+
+    assembler = VectorAssembler( inputCols=merge_columns, outputCol=output_column)
+    res = assembler.transform(ddf_res)
+
+    if drop_merged_columns:
+        res = drop_columns(res, columns=merge_columns)
+
     return res
 
