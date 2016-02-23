@@ -168,7 +168,7 @@ def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_c
     index_col_suffix = '_idx'
     grpby_columns = [id_column, pivot_column]
 
-    aggregated = aggregate(ddf, grpby_columns, aggs)
+    aggregated = ddf.groupBy(grpby_columns).agg(*aggs)
 
     pivot_indexed_column = pivot_column+index_col_suffix
     agg_column_names = list(set(aggregated.columns)-set([id_column, pivot_column, pivot_indexed_column]))
