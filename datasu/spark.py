@@ -89,46 +89,81 @@ def get_index_from_vector(element_type=DoubleType):
     return UserDefinedFunction(lambda x, index: x.values.tolist()[index], element_type(), 'get_index_from_vector')
 
 
-def rename_columns(df, prefix='', suffix='', separator='_', columns=None):
+def rename_columns(ddf, prefix='', suffix='', separator='_', columns=None):
+    """
+    rename multiple columns in DataFrame by adding prefix and suffix
+    :param ddf: DataFrame
+    :param prefix:
+    :param suffix:
+    :param separator:
+    :param columns: columns to rename. Use all columns in DataFrame if None.
+    :return:
+    """
     prefix = prefix + separator if prefix else prefix
     suffix = separator + suffix if suffix else suffix
-    columns = df.columns if columns is None else columns
-    df1 = df.select('*')
+    columns = ddf.columns if columns is None else columns
+    df1 = ddf.select('*')
     for c in columns:
         df1 = df1.withColumnRenamed(c, prefix + c + suffix)
     return df1
 
 
 def filter_columns(expr, df):
+    """
+    Filter columns list by regex expression
+    :param expr: regex expression
+    :param df:
+    :return: columns list matching expr
+    """
     import re
     return filter(lambda c: re.match(expr,c), df.columns)
 
 
-def pivot_aggregate(ddf, grpby_columns, pivot_column, aggs, pivot_filter_values=None, pivot_filter_support=None):
-    if pivot_filter_support and not pivot_filter_values:
-        frequent = ddf.freqItems([pivot_column], support=pivot_filter_support).first().asDict()[pivot_column+'_freqItems']
-        pivot_filter_values = map(str,frequent)
-
-    ddf_gr = ddf.groupBy(*grpby_columns)
-    ddf_pivot = ddf_gr.pivot(pivot_column, pivot_filter_values)
-    ddf_agg = ddf_pivot.agg(*aggs)
-    return ddf_agg
-
-
-def aggregate(ddf, grpby_columns, aggs):
-    aggregated = ddf.groupBy(*map(lambda c: F.col(c),grpby_columns)).agg(*aggs)
-    return aggregated
-
-
-def index_columns(ddf, index_columns, index_col_suffix='_idx'):
+def index_columns(ddf, index_columns, index_col_suffix='_idx', return_indexers=False):
+    """
+    Index multiple columns using pyspark.ml.feature.StringIndexer
+    :param ddf: DataFrame
+    :param index_columns: columns to index
+    :param index_col_suffix: suffix added to new indexed columns that created
+    :param return_indexers: return StringIndexers transformers in the result
+    :return: DataFrame with indexed columns and indexers (optional)
+    """
     from pyspark.ml.feature import StringIndexer
     indexers = map(lambda c: StringIndexer(inputCol=c, outputCol='%s%s' % (c,index_col_suffix)).fit(ddf), index_columns)
     indexed = reduce(lambda ddf,t: t.transform(ddf), indexers, ddf)
-    return indexed
+
+    if return_indexers:
+        return indexed, indexers
+    else:
+        return indexed
 
 
-def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs, vector_column_name='features'):
+def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_column_name='features'):
+    """
+    1. apply aggs to DataFrame (group by [id_column, pivot_column]),
+    2. pivot (one-hot encode) by pivot_column (values are indexed by StringIndexer)
+    3. save results into vector_column_name as Vector (if multiple aggregations provided, assemble result into one vector using pyspark.ml.feature.VectorAssembler)
+
+    Example:
+    aggs = get_ddf_aggs(grpby_columns=['customer_id', 'category'], agg_columns=['productsize','purchasequantity'],
+                        agg_funcs={'total':F.sum}, prefix='agg_', columns cast_to='double')
+    print aggs
+        #[Column<cast((sum(productsize),mode=Complete,isDistinct=false) as double) AS agg_customer_id_category_productsize_total#127>,
+        #Column<cast((sum(purchasequantity),mode=Complete,isDistinct=false) as double) AS agg_customer_id_category_purchasequantity_total#128>]
+
+    ddf_trans_pivot = aggregate_and_pivot_into_vector(ddf_trans, id_column='customer_id', pivot_column='category', aggs=aggs)
+    ddf_trans_pivot.first()
+        #Row(customer_id=98468631, features=SparseVector(1666, {0: 1.0, 1: 1.0, 5: 1.0, 8: 2.0, 13: 1.0, ))
+
+    :param ddf: DataFrame
+    :param id_column: row id column
+    :param pivot_column: column to one-hot encode
+    :param aggs:
+    :param vector_column_name:
+    :return:
+    """
     from pyspark.mllib.linalg.distributed import CoordinateMatrix, IndexedRowMatrix
+    from pyspark.ml.feature import VectorAssembler
 
     index_col_suffix = '_idx'
     grpby_columns = [id_column, pivot_column]
@@ -138,13 +173,11 @@ def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs, vector_
     pivot_indexed_column = pivot_column+index_col_suffix
     agg_column_names = list(set(aggregated.columns)-set([id_column, pivot_column, pivot_indexed_column]))
 
-    indexed = index_columns(ddf=aggregated, index_columns=[pivot_column])
+    indexed, indexers = index_columns(ddf=aggregated, index_columns=[pivot_column], index_col_suffix=index_col_suffix, return_indexers=True)
 
     res = None
     agg_columns_vectors = map(lambda c: c+'_vector',agg_column_names)
     for agg_column, agg_column_vector in zip(agg_column_names, agg_columns_vectors):
-        print agg_column, agg_column_vector
-
         cm = CoordinateMatrix(
             indexed.map(lambda r: (long(r[id_column]), long(r[pivot_indexed_column]), r[agg_column]))
         )
@@ -157,8 +190,7 @@ def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs, vector_
         else:
             res = ddf_irm
 
-
-    if len(agg_columns_vectors)>1:
+    if len(agg_columns_vectors) > 1:
         assembler = VectorAssembler(inputCols=agg_columns_vectors, outputCol=vector_column_name)
         res = assembler.transform(res)
     else:
@@ -169,6 +201,20 @@ def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs, vector_
 
 
 def merge_features(ddfs, join_column, merge_column, output_column='features', drop_merged_columns=True):
+    """
+    join (inner) several DataFrames by same id and merge its columns (merge_column) into one column using using pyspark.ml.feature.VectorAssembler
+
+    Example:
+        ddf_merge = merge_features(ddfs=[ddf_pivot1,ddf_pivot2], join_column='customer_id', merge_column='features')
+    :param ddfs:
+    :param join_column: id column to join by (each ddf must have this column)
+    :param merge_column: column to merge (each ddf must have this column)
+    :param output_column:
+    :param drop_merged_columns:
+    :return:
+    """
+    from pyspark.ml.feature import VectorAssembler
+
     ddf_res = ddfs.pop(0)
     merge_column_renamed = merge_column + str(0)
     merge_columns = [merge_column_renamed]
@@ -180,7 +226,7 @@ def merge_features(ddfs, join_column, merge_column, output_column='features', dr
         ddf_r = ddf.withColumnRenamed(merge_column, merge_column_renamed)
         ddf_res = ddf_res.join(ddf_r, on=join_column, how='inner')
 
-    assembler = VectorAssembler( inputCols=merge_columns, outputCol=output_column)
+    assembler = VectorAssembler(inputCols=merge_columns, outputCol=output_column)
     res = assembler.transform(ddf_res)
 
     if drop_merged_columns:
@@ -188,3 +234,13 @@ def merge_features(ddfs, join_column, merge_column, output_column='features', dr
 
     return res
 
+
+# def pivot_aggregate(ddf, grpby_columns, pivot_column, aggs, pivot_filter_values=None, pivot_filter_support=None):
+#     if pivot_filter_support and not pivot_filter_values:
+#         frequent = ddf.freqItems([pivot_column], support=pivot_filter_support).first().asDict()[pivot_column+'_freqItems']
+#         pivot_filter_values = map(str,frequent)
+#
+#     ddf_gr = ddf.groupBy(*grpby_columns)
+#     ddf_pivot = ddf_gr.pivot(pivot_column, pivot_filter_values)
+#     ddf_agg = ddf_pivot.agg(*aggs)
+#     return ddf_agg
