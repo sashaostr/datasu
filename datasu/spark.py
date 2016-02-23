@@ -127,28 +127,43 @@ def index_columns(ddf, index_columns, index_col_suffix='_idx'):
     return indexed
 
 
-def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, agg):
+def aggregate_pivot_to_sparse_vector(ddf, id_column, pivot_column, aggs):
     from pyspark.mllib.linalg.distributed import CoordinateMatrix, IndexedRowMatrix
 
     index_col_suffix = '_idx'
     grpby_columns = [id_column, pivot_column]
 
-    aggregated = aggregate(ddf, grpby_columns, [agg])
+    aggregated = aggregate(ddf, grpby_columns, aggs)
 
     pivot_indexed_column = pivot_column+index_col_suffix
-    agg_column_name = list(set(aggregated.columns)-set([id_column, pivot_column, pivot_indexed_column]))[0]
+    agg_column_names = list(set(aggregated.columns)-set([id_column, pivot_column, pivot_indexed_column]))
 
     indexed = index_columns(ddf=aggregated, index_columns=[pivot_column])
 
+    res = None
+    agg_columns_vectors = map(lambda c: c+'_vector',agg_column_names)
+    for agg_column, agg_column_vector in zip(agg_column_names, agg_columns_vectors):
+        print agg_column, agg_column_vector
 
-    cm = CoordinateMatrix(
-        indexed.map(lambda r: (long(r[id_column]), long(r[pivot_indexed_column]), r[agg_column_name]))
-    )
+        cm = CoordinateMatrix(
+            indexed.map(lambda r: (long(r[id_column]), long(r[pivot_indexed_column]), r[agg_column]))
+        )
+        irm = cm.toIndexedRowMatrix()
+        ddf_irm = irm.rows.toDF()
+        ddf_irm = ddf_irm.withColumnRenamed('index', id_column).withColumnRenamed('vector', agg_column_vector)
 
-    irm = cm.toIndexedRowMatrix()
+        if res:
+            res = res.join(ddf_irm, on=id_column, how='inner')
+        else:
+            res = ddf_irm
 
-    ddf_irm = irm.rows.toDF()
-    ddf_irm = ddf_irm.withColumnRenamed('index', id_column).withColumnRenamed('vector', agg_column_name+'_vector')
 
-    return ddf_irm
+    if len(agg_columns_vectors)>1:
+        assembler = VectorAssembler(inputCols=agg_columns_vectors, outputCol="features")
+        res = assembler.transform(res)
+    else:
+        res = res.withColumnRenamed(agg_columns_vectors[0],'features')
+
+    res = drop_columns(res, columns=agg_columns_vectors)
+    return res
 
