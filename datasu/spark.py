@@ -142,7 +142,8 @@ def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_c
     """
     1. apply aggs to DataFrame (group by [id_column, pivot_column]),
     2. pivot (one-hot encode) by pivot_column (values are indexed by StringIndexer)
-    3. save results into vector_column_name as Vector (if multiple aggregations provided, assemble result into one vector using pyspark.ml.feature.VectorAssembler)
+    3. save results into vector_column_name as Vector (if multiple aggregations provided, assemble result into one
+    vector using pyspark.ml.feature.VectorAssembler)
 
     Example:
     aggs = get_ddf_aggs(grpby_columns=['customer_id', 'category'], agg_columns=['productsize','purchasequantity'],
@@ -160,6 +161,8 @@ def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_c
     :param pivot_column: column to one-hot encode
     :param aggs:
     :param vector_column_name:
+    :param return_indexer: add indexer object (StringIndexer) to result. Indexer holds encoder which was used to encode
+    pivot_column values
     :return:
     """
     from pyspark.mllib.linalg.distributed import CoordinateMatrix, IndexedRowMatrix
