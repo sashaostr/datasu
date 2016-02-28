@@ -138,7 +138,7 @@ def index_columns(ddf, index_columns, index_col_suffix='_idx', return_indexers=F
         return indexed
 
 
-def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_column_name='features'):
+def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_column_name='features', return_indexer=False):
     """
     1. apply aggs to DataFrame (group by [id_column, pivot_column]),
     2. pivot (one-hot encode) by pivot_column (values are indexed by StringIndexer)
@@ -197,7 +197,11 @@ def aggregate_and_pivot_into_vector(ddf, id_column, pivot_column, aggs, vector_c
         res = res.withColumnRenamed(agg_columns_vectors[0], vector_column_name)
 
     res = drop_columns(res, columns=agg_columns_vectors)
-    return res
+
+    if return_indexer and len(indexers) > 0:
+        return res, indexers.pop()
+    else:
+        return res
 
 
 def merge_features(ddfs, join_column, merge_column, output_column='features', drop_merged_columns=True):
