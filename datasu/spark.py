@@ -89,6 +89,10 @@ def get_index_from_vector(element_type=DoubleType):
     return UserDefinedFunction(lambda x, index: x.values.tolist()[index], element_type(), 'get_index_from_vector')
 
 
+def bool_to_type_udf(target_type, val_true, val_false):
+    return UserDefinedFunction(lambda v: val_true if v else val_false, target_type(), 'bool_to_type_udf')
+
+
 def rename_columns(ddf, prefix='', suffix='', separator='_', columns=None):
     """
     rename multiple columns in DataFrame by adding prefix and suffix
